@@ -7,6 +7,10 @@ import argparse
 import tqdm
 
 from solvers.ode_solvers import ODESolve
+try:
+    from args import apply_local_defaults
+except ImportError:
+    from args_example import apply_local_defaults
 
 def image_generation(velocity_model, solver, image_path, alpha=0.5, 
                      num_steps_fw=1, num_steps_rev=10, init_time = 0, 
@@ -57,7 +61,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Hidden Pictures Generation Script', add_help=False)
 
     # Required
-    parser.add_argument('--image_path', type=Path, required=True, help='Path to original image')
+    parser.add_argument('--image_path', type=Path, help='Path to original image')
+    parser.add_argument('--save_path', type=Path, help='Path to save generated images')
     parser.add_argument('--model_id', type=str, required=True, help='model id (huggingface repo)')
     #TODO
 
@@ -65,6 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_id', type=str, required=True, help='model id (huggingface repo)')
     #TODO
 
+    apply_local_defaults(parser)
     args = parser.parse_args()
     model_id = args.model_id
 
@@ -79,5 +85,6 @@ if __name__ == '__main__':
                      num_steps_fw=args.num_steps_fw, num_steps_rev=args.num_steps_rev, init_time = args.init_time, 
                      target_size=args.target_size)
     
+    args.save_path.mkdir(parents=True, exist_ok=True)
     orig.save(args.save_path / "instaflow_orig.png")
     recon.save(args.save_path / "instaflow_reconstruction.png")
