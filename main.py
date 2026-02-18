@@ -67,7 +67,6 @@ if __name__ == '__main__':
     #TODO
 
     # Model specs
-    parser.add_argument('--model_id', type=str, required=True, help='model id (huggingface repo)')
     #TODO
 
     apply_local_defaults(parser)
