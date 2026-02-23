@@ -1,3 +1,4 @@
+from typing import Self
 import torch
 import numpy as np
 from diffusers import StableDiffusionPipeline
@@ -17,7 +18,6 @@ class InstaFlow():
         self.processor = self.pipe.image_processor
         self.vae_scaling_factor = self.pipe.vae.config.scaling_factor
 
-    @classmethod
     def decoder(self, x0_amplified):
         reconstructed_latents = self.pipe(
             prompt="",
@@ -28,17 +28,11 @@ class InstaFlow():
 
         return reconstructed_latents
     
-    @classmethod
     def encoder(self,pixel_values):
         x1 = self.pipe.vae.encode(pixel_values).latent_dist.sample() * self.pipe.vae.config.scaling_factor
         return x1
     
-    @classmethod
-    def tokenizer(prompt="", 
-                padding="max_length", 
-                max_length=self.pipe.tokenizer.model_max_length, 
-                return_tensors="pt"
-            ):
+    def tokenizer(self,prompt, padding, max_length, return_tensors):
         inputs = self.pipe.tokenizer(
             prompt, 
             padding, 
@@ -48,8 +42,6 @@ class InstaFlow():
 
         return inputs
     
-    @classmethod
     def text_encoder(self, input):
         locked_embeddings = self.pipe.text_encoder(input)
         return locked_embeddings
-    
