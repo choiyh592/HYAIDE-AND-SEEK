@@ -1,3 +1,6 @@
 *.pyc
 __pycache__/
 .ipynb_checkpoints
+args.py
+images/output/*
+!images/output/.gitkeep
