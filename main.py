@@ -13,6 +13,9 @@ except ImportError:
 
 
 def run_generate(args):
+    if not args.model_id:
+        raise ValueError("--model_id is required for generate task.")
+
     velocity_model = create_model(args)
     if velocity_model is None:
         raise NotImplementedError("create_model(args) is not implemented yet.")
@@ -44,8 +47,9 @@ def build_parser():
     parser.add_argument("--image_path", type=Path, help="Path to original image")
     parser.add_argument("--input_path", type=Path, help="Path to generated image")
     parser.add_argument("--save_path", type=Path, help="Path to save outputs")
-    parser.add_argument("--model_id", type=str, required=True, help="Model id (huggingface repo)")
+    parser.add_argument("--model_id", type=str, help="Model id (huggingface repo)")
     parser.add_argument("--method", type=str, choices=["euler", "rk4"], default="euler")
+    parser.add_argument("--image_index", type=int, default=0, help="Index n for output image / ROI row")
 
     # Keep generation knobs as parser defaults without exposing CLI flags.
     parser.set_defaults(
