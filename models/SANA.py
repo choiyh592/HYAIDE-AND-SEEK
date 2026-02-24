@@ -5,101 +5,70 @@ from diffusers import SanaPipeline
 from diffusers.utils import load_image
 
 class SANA():
-    def __init__(self, image_path, target_size=512):
-        self.target_size = target_size
-        self.init_img = load_image(image_path).resize((self.target_size, self.target_size), Image.LANCZOS)
-    
-    def load_pipeline(self, pipe=None):
-        if pipe is None:
-            pipe = SanaPipeline.from_pretrained(
+    def __init__(self, device="cuda"):
+        self.device = device
+
+        self.pipe = SanaPipeline.from_pretrained(
                 "Efficient-Large-Model/Sana_1600M_512px_diffusers",
                 variant="fp16",
                 torch_dtype=torch.float16,
-            ).to("cuda")
-        self.pipe = pipe
-
-    def invert_image(self, num_inversion_steps, prompt=""):
-        if not hasattr(self, "pipe"):
-            raise RuntimeError("load_pipeline()을 먼저 호출하세요.")
+            ).to(device)
         
-        with torch.no_grad():
-            # --- VAE ENCODING ---
-            pixel_values = self.pipe.image_processor.preprocess(self.init_img).to("cuda", dtype=torch.float16)
-            enc_output = self.pipe.vae.encode(pixel_values)
-            
-            # Extract and scale
-            x1_raw = enc_output.latents if hasattr(enc_output, "latents") else enc_output[0]
-            self.x1 = x1_raw * self.pipe.vae.config.scaling_factor
-            # --- TEXT EMBEDDINGS ---
-            max_length = 256 
-            prompt_outputs = self.pipe.tokenizer(
-                prompt, padding="max_length", max_length=max_length, 
-                truncation=True, return_tensors="pt"
-            ).to("cuda")
-            prompt_embeds = self.pipe.text_encoder(
-            prompt_outputs.input_ids, 
-            attention_mask=prompt_outputs.attention_mask
-            )[0]
-            self.locked_embeddings = torch.zeros_like(prompt_embeds)
+        self.vae_scale = self.pipe.vae.config.scaling_factor
+        self._zero_embeddings = self.prepare_zero_emb()
+    
+    def prepare_zero_emb(self):
+        prompt = ""
+        self.inputs = self.pipe.tokenizer(
+            prompt,
+            padding="max_length",
+            max_length=self.pipe.tokenizer.model_max_length,
+            return_tensors="pt",
+        ).to(self.device)
 
-        # --- inversion ---
-            x_inv = self.x1.clone()
-            dt = 1.0 / num_inversion_steps
-            
-            for i in range(num_inversion_steps):
-                # We go from t=1.0 down to 0.0
-                # Step i=0: t=1.0, Step i=num_steps-1: t=dt
-                t_val = 1.0 - (i * dt)
-                t_tensor = torch.tensor([t_val], device="cuda", dtype=torch.float16)
-                
-                # Predict velocity at current state and time
-                v = self.pipe.transformer(
-                    hidden_states=x_inv,
-                    encoder_hidden_states=self.locked_embeddings,
-                    encoder_attention_mask=prompt_outputs.attention_mask, 
+        locked_embeddings = self.pipe.text_encoder(self.inputs.input_ids)[0]
+        zero_embeddings = torch.zeros_like(locked_embeddings).to(self.device)
+
+        return zero_embeddings
+    
+    @property
+    def zero_emb(self):
+        return self._zero_embeddings
+
+    @staticmethod
+    def save_tensor_image_to_path(tensor_image, save_path):
+        image = (tensor_image / 2 + 0.5).clamp(0, 1)
+        image = rearrange(image, 'b c h w -> b h w c').cpu().float().numpy()
+        image = (image[0] * 255).astype(np.uint8)
+        
+        Image.fromarray(image).save(save_path)
+        
+    def decode(self, x0):
+        x0_amplified = x0 / self.vae_scale
+        recon_image = self.pipe.vae.decode(x0_amplified).sample
+        return recon_image
+    
+    def encode(self, pixel_values):
+        x1 = self.pipe.vae.encode(pixel_values)
+        return x1
+    
+    def velocity(self, x, step,num_inversion_step, embeddings):
+        t_val = 1.0 - (step * num_inversion_step)
+        t_tensor = torch.tensor([t_val], device="cuda", dtype=torch.float16)
+        v = self.pipe.transformer(
+                    hidden_states=x,
+                    encoder_hidden_states=embeddings,
+                    encoder_attention_mask=self.inputs.attention_mask, 
                     timestep=t_tensor,
                     return_dict=False
                 )[0]
-                
-                # Backward Euler step: x_{t-dt} = x_t - v * dt
-                x_inv = x_inv - v * dt
-            
-            self.x0 = x_inv
+        return v
+    
+    def process_image(self, init_image):
+        image = self.pipe.image_processor.preprocess(init_image).to(self.device, dtype=torch.float16)
+        image = image.to(self.device)
+        return image
 
-    def sample(self, alpha, beta,gamma=0.1):
-        if not hasattr(self, "x0") or not hasattr(self, "x1"):
-            raise RuntimeError("invert_image()를 먼저 호출하세요.")
 
-        noise = torch.randn_like(self.x0)
-        x0_manipulated = ((self.x_inv)* beta + self.x1 * (1-beta)) * alpha
-        
-        # --- RECONSTRUCTION ---
-        # Note: num_inference_steps=1 works for SANA's flow-matching
-        output = self.pipe(
-            prompt="",
-            num_inference_steps=2,
-            guidance_scale=1.0, 
-            latents=x0_manipulated,
-            width=self.target_size,   # Explicitly set width/height
-            height=self.target_size,
-            output_type="pil"
-        ).images[0]
-        
-        # --- RESIDUAL CALCULATION (Tensor Alignment) ---
-        recon_pt = self.pipe.image_processor.preprocess(output).to("cuda")
-        orig_pt = self.pipe.image_processor.preprocess(self.init_img).to("cuda")
-        
-        # Safety check: if shapes still differ (due to padding/VAE logic), resize recon to match orig
-        if recon_pt.shape != orig_pt.shape:
-            recon_pt = torch.nn.functional.interpolate(recon_pt, size=(self.target_size, self.target_size), mode='bilinear')
-
-        residual = torch.abs(orig_pt - recon_pt).mean(dim=1).squeeze().cpu().numpy()
-        
-
-        res_map_normalized = (residual/ (residual.max() + 1e-8) * 255).astype(np.uint8)
-        self.init_img.save("sana_orig.png")
-        Image.fromarray(res_map_normalized).save("sana_discovery.png")
-        output.save("sana_reconstruction.png")
-        print("Discovery maps saved successfully.")
 
     
