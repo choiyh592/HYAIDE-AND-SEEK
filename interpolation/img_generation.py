@@ -1,5 +1,5 @@
 """
-이미지 생성을 엔지니어링 방식으로 시도 : SDXL Img2Img + IP-Adapter를 활용하여 source에서 target으로 선형적으로 이동하는 trajectory 생성
+이미지 생성을 엔지니어링 방식으로 시도 : SDXL Img2Img + IP-Adapter를 활용하여 conditional image generation
 - Early frames: source-like
 - Late frames: increasingly target-like
 - Final frames: essentially target distribution (strength ~ 1.0)
