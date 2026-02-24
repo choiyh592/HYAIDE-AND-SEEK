@@ -21,9 +21,9 @@ class ODESolve:
         else:
             t = init_time
 
-        for _ in tqdm(range(num_steps), desc=f"RK4 {mode}"):
+        for _ in tqdm(range(num_steps), desc=f"Euler {mode}"):
             # x_{n+1} = x_n + dt * f(t_n, x_n)
-            grad = model(x, t, embeddings)
+            grad = model.velocity(x, t, embeddings)
             x = x + dt * grad
             
             # Update time
@@ -53,19 +53,19 @@ class ODESolve:
 
         for _ in tqdm(range(num_steps), desc=f"RK4 {mode}"):
             # k1 = f(t, x)
-            k1 = model(x, t, embeddings)
+            k1 = model.velocity(x, t, embeddings)
             
             # k2 = f(t + dt/2, x + dt/2 * k1)
-            k2 = model(x + (dt/2) * k1, t + dt/2, embeddings)
+            k2 = model.velocity(x + (dt/2) * k1, t + dt/2, embeddings)
             
             # k3 = f(t + dt/2, x + dt/2 * k2)
-            k3 = model(x + (dt/2) * k2, t + dt/2, embeddings)
+            k3 = model.velocity(x + (dt/2) * k2, t + dt/2, embeddings)
             
             # k4 = f(t + dt, x + dt * k3)
-            k4 = model(x + dt * k3, t + dt, embeddings)
+            k4 = model.velocity(x + dt * k3, t + dt, embeddings)
             
             # Update state: x = x + dt/6 * (k1 + 2k2 + 2k3 + k4)
-            x = x + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4, embeddings)
+            x = x + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
             
             # Update time
             t += dt
