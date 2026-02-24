@@ -24,6 +24,25 @@ def load_image_rgb(path: str, size=TARGET_SIZE):
     size = (size, size) if isinstance(size, int) else size
     return img.resize(size, Image.Resampling.LANCZOS)
 
+# Experiment : Add slerp function for better interpolation in latent space
+def slerp(v0: torch.Tensor, v1: torch.Tensor, num: int, t0: float = 0, t1: float = 1) -> torch.Tensor:
+    """Spherical linear interpolation between two latent vectors."""
+    v0 = v0.detach().cpu().numpy()
+    v1 = v1.detach().cpu().numpy()
+
+    def _interpolate(t, v0, v1, dot_threshold=0.9995):
+        dot = np.sum(v0 * v1 / (np.linalg.norm(v0) * np.linalg.norm(v1)))
+        if np.abs(dot) > dot_threshold:
+            return (1 - t) * v0 + t * v1
+        theta_0 = np.arccos(dot)
+        sin_theta_0 = np.sin(theta_0)
+        theta_t = theta_0 * t
+        s0 = np.sin(theta_0 - theta_t) / sin_theta_0
+        s1 = np.sin(theta_t) / sin_theta_0
+        return s0 * v0 + s1 * v1
+
+    t = np.linspace(t0, t1, num)
+    return torch.tensor(np.array([_interpolate(t[i], v0, v1) for i in range(num)]))
 
 def interpolate_images(
     velocity_model,
