@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from PIL import Image
 from diffusers import SanaPipeline
-from diffusers.utils import load_image
+from einops import rearrange
 
 class SANA():
     def __init__(self, device="cuda"):
