@@ -49,12 +49,15 @@ class SANA():
         return recon_image
     
     def encode(self, pixel_values):
-        x1 = self.pipe.vae.encode(pixel_values)
+        enc_output = self.pipe.vae.encode(pixel_values) 
+        # Extract and scale
+        x1_raw = enc_output.latents if hasattr(enc_output, "latents") else enc_output[0]
+        x1 = x1_raw * self.vae_scale
         return x1
     
     def velocity(self, x, step,num_inversion_step, embeddings):
         t_val = 1.0 - (step * num_inversion_step)
-        t_tensor = torch.tensor([t_val], device="cuda", dtype=torch.float16)
+        t_tensor = torch.tensor([t_val], device=self.device, dtype=torch.float16)
         v = self.pipe.transformer(
                     hidden_states=x,
                     encoder_hidden_states=embeddings,
@@ -72,3 +75,4 @@ class SANA():
 
 
     
+
