@@ -1,6 +1,21 @@
 from tqdm import tqdm
 
 class ODESolve:
+    def __init__(self, solve_method = "euler"):
+
+        methods = {
+            "euler": self.euler_solver,
+            "rk4": self.rk4_solver
+        }
+
+        if solve_method not in methods:
+            raise ValueError(f"Method {solve_method} not supported. Choose from {list(methods.keys())}")
+        
+        self.solver = methods[solve_method]
+
+    def __call__(self, *args, **kwargs):
+        return self.solver(*args, **kwargs)
+
     @staticmethod
     def euler_solver(model, x, embeddings, num_steps, mode='forward', init_time=0):
         """

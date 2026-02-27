@@ -2,14 +2,27 @@ from .SANA import SANA
 from .InstaFlow import InstaFlow
 # TODO : Add imports
 
-def create_model(args):
-    model_name = args.model.lower()
+class FlowModels:
+    def __init__(self, args):
+        model_name = args.model_id.lower()
 
-    if model_name == "sana":
-        return SANA()
-    elif model_name == "instaflow":
-        return InstaFlow()
+        models = {
+            "sana": SANA,
+            "instaflow": InstaFlow,
+        }
 
+        if model_name not in models:
+            raise ValueError(f"Model {args.model_id} not supported. Choose from {list(models.keys())}")
+        
+        self._model = models[model_name]()
+    
+    @property
+    def model(self):
+        return self._model
+
+
+
+        
 
 
 
