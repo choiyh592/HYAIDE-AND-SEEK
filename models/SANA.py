@@ -18,11 +18,12 @@ class SANA():
         self._zero_embeddings = self.prepare_zero_emb()
     
     def prepare_zero_emb(self):
+        max_length = 256 # manual max length
         prompt = ""
         self.inputs = self.pipe.tokenizer(
             prompt,
             padding="max_length",
-            max_length=self.pipe.tokenizer.model_max_length,
+            max_length=max_length,
             return_tensors="pt",
         ).to(self.device)
 
@@ -55,9 +56,8 @@ class SANA():
         x1 = x1_raw * self.vae_scale
         return x1
     
-    def velocity(self, x, step,num_inversion_step, embeddings):
-        t_val = 1.0 - (step * num_inversion_step)
-        t_tensor = torch.tensor([t_val], device=self.device, dtype=torch.float16)
+    def velocity(self, x, t, embeddings):
+        t_tensor = torch.tensor([t]).to(self.device)
         v = self.pipe.transformer(
                     hidden_states=x,
                     encoder_hidden_states=embeddings,
