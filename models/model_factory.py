@@ -1,6 +1,6 @@
 from .SANA import SANA
 from .InstaFlow import InstaFlow
-from .Pixart import Pixart
+from .PixartSigma import PixartSigma
 # TODO : Add imports
 
 class FlowModels:
@@ -10,7 +10,7 @@ class FlowModels:
         models = {
             "sana": SANA,
             "instaflow": InstaFlow
-            "pixart" : Pixart,
+            "pixart" : PixartSigma,
         }
 
         if model_name not in models:
