@@ -3,16 +3,16 @@
 # --- Configuration ---
 TASK="generate" # choices: "generate", "interpret"
 IMAGE_PATH="/home/yhchoi/Diffusion_Toy/corn_drawing.png" # path to your image
-SAVE_PATH="/home/yhchoi/Diffusion_Toy" # path to save generated image
-MODEL_ID="instaflow" # model name
+SAVE_PATH="/home/yhchoi/Diffusion_Toy/gen_exp" # path to save generated image
+MODEL_ID="sana" # model name : case-insensitive but lowercase is recommended for experiment logging
 
-# --- ODE & Latent Settings ---
+# --- ODE & Latent Settings : Tune these ---
 FW_METHOD="euler"
 REV_METHOD="euler"
 FW_STEPS=1
-REV_STEPS=1
-ALPHA=0.8
-INIT_TIME=0
+REV_STEPS=3
+ALPHA=0.8 
+INIT_TIME=0.0 # in range [0, 1)
 IMAGE_INDEX=0
 TARGET_SIZE=1024
 
@@ -35,4 +35,4 @@ python main.py \
     --init_time "$INIT_TIME" \
     --target_size "$TARGET_SIZE"
 
-echo "Pipeline process complete."
+echo "Pipeline process complete." 
