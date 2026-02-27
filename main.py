@@ -5,6 +5,7 @@ from generate import image_generation
 from interpret import run_interpret
 from models.model_factory import FlowModels
 from solvers.ode_solvers import ODESolve
+from utils.utils import count_files_with_prefix
 
 def run_generate(args):
     if not args.model_id:
@@ -28,8 +29,12 @@ def run_generate(args):
     )
 
     args.save_path.mkdir(parents=True, exist_ok=True)
-    orig.save(args.save_path / "instaflow_orig.png")
-    velocity_model.save_tensor_image_to_path(recon, args.save_path / "instaflow_reconstruction.png")
+    prefix_orig = f"{args.model_id}_orig"
+    prefix_recon = f"{args.model_id}_recon"
+    file_count_orig = count_files_with_prefix(args.save_path, prefix_orig)
+    file_count_rev = count_files_with_prefix(args.save_path, prefix_recon)
+    orig.save(args.save_path / f"{args.model_id}_orig_{file_count_orig + 1}.png")
+    velocity_model.save_tensor_image_to_path(recon, args.save_path / f"{args.model_id}_recon_{file_count_rev + 1}.png")
 
 def build_parser():
     parser = argparse.ArgumentParser("Hidden Pictures Pipeline")
