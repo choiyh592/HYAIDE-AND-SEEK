@@ -63,6 +63,7 @@ class PixartSigma():
         return x1
     
     def velocity(self, x, t, embeddings):
+        # InstaFlow(which is basically SD1.5) expects 0-1000 scale for timesteps
         t_tensor = torch.tensor([t]).to(self.device)
         v = self.pipe.transformer(
                     hidden_states=x,
@@ -71,6 +72,12 @@ class PixartSigma():
                     timestep=t_tensor,
                     return_dict=False
                 )[0]
+
+        # Pixart outputs two chunks for image and text (maybe not tho idk)
+        # https://github.com/huggingface/diffusers/blob/v0.36.0/src/diffusers/pipelines/pixart_alpha/pipeline_pixart_sigma.py#L185
+        # we chunk the velocity and take the first chunk as in above implementation
+        v = v.chunk(2, dim=1)[0]
+
         return v
     
     def process_image(self, init_image):
