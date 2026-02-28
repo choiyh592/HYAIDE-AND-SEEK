@@ -9,7 +9,7 @@ class FlowModels:
 
         models = {
             "sana": SANA,
-            "instaflow": InstaFlow
+            "instaflow": InstaFlow,
             "pixart" : PixartSigma,
         }
 
